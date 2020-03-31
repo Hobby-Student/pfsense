@@ -39,18 +39,26 @@ init_config_arr(array('ipsec', 'mobilekey'));
 ipsec_mobilekey_sort();
 $a_secret = &$config['ipsec']['mobilekey'];
 
+init_config_arr(array('ipsec', 'phase1'));
+$a_phase1 = &$config['ipsec']['phase1'];
+
+init_config_arr(array('cert'));
+$a_cert = &$config['cert'];
+
 if (is_numericint($_REQUEST['id'])) {
 	$id = $_REQUEST['id'];
 }
 
 if (isset($id) && $a_secret[$id]) {
+	$pconfig['phase1_ikeid'] = $a_secret[$id]['phase1-ikeid'];
 	$pconfig['ident'] = $a_secret[$id]['ident'];
 	$pconfig['type'] = $a_secret[$id]['type'];
 	$pconfig['psk'] = $a_secret[$id]['pre-shared-key'];
-	$pconfig['ident_type'] = $a_secret[$id]['ident_type'];
-	$pconfig['pool_address'] = $a_secret[$id]['pool_address'];
-	$pconfig['pool_netbits'] = $a_secret[$id]['pool_netbits'];
-	$pconfig['dns_address'] = $a_secret[$id]['dns_address'];
+	$pconfig['certref'] = $a_secret[$id]['certref'];
+	$pconfig['ident_type'] = $a_secret[$id]['ident-type'] ?? $a_secret[$id]['ident_type'];
+	$pconfig['pool_address'] = $a_secret[$id]['pool-address'] ?? $a_secret[$id]['pool_address'];
+	$pconfig['pool_netbits'] = $a_secret[$id]['pool-netbits'] ?? $a_secret[$id]['pool_netbits'];
+	$pconfig['dns_address'] = $a_secret[$id]['dns-address'] ?? $a_secret[$id]['dns_address'];
 }
 
 if ($_POST['save']) {
@@ -63,8 +71,24 @@ if ($_POST['save']) {
 	$pconfig = $_POST;
 
 	/* input validation */
-	$reqdfields = explode(" ", "ident psk");
-	$reqdfieldsn = array(gettext("Identifier"), gettext("Pre-Shared Key"));
+	$reqdfields = array();
+	$reqdfieldsn = array();
+
+	$reqdfields[] = "ident";
+	$reqdfieldsn[] = gettext("Identifier");
+
+	switch ($_POST['type']) {
+		case 'RSA':
+			$reqdfields[] = "certref";
+			$reqdfieldsn[] = gettext("User certificate");
+			break;
+		default:
+			$reqdfields[] = "psk";
+			$reqdfieldsn[] = gettext("Pre-Shared Key");
+			break;
+	}
+	// $reqdfields = explode(" ", $reqfields_combine);
+	// $reqdfieldsn = array(gettext("Identifier"), gettext("Pre-Shared Key"));
 
 	do_input_validation($_POST, $reqdfields, $reqdfieldsn, $input_errors);
 
@@ -92,7 +116,7 @@ if ($_POST['save']) {
 	if (!$input_errors && !(isset($id) && $a_secret[$id])) {
 		/* make sure there are no dupes */
 		foreach ($a_secret as $secretent) {
-			if ($secretent['ident'] == $_POST['ident']) {
+			if ($secretent['ident'] == $_POST['ident'] && $secretent['phase1-ikeid'] == $_POST['phase1_ikeid']) {
 				$input_errors[] = gettext("Another entry with the same identifier already exists.");
 				break;
 			}
@@ -105,13 +129,31 @@ if ($_POST['save']) {
 			$secretent = $a_secret[$id];
 		}
 
+		$secretent['phase1-ikeid'] = $_POST['phase1_ikeid'];
 		$secretent['ident'] = $_POST['ident'];
 		$secretent['type'] = $_POST['type'];
-		$secretent['pre-shared-key'] = $_POST['psk'];
-		$secretent['ident_type'] = $_POST['ident_type'];
-		$secretent['pool_address'] = $_POST['pool_address'];
-		$secretent['pool_netbits'] = $_POST['pool_netbits'];
-		$secretent['dns_address'] = $_POST['dns_address'];
+
+		switch ($secretent['type']) {
+			case 'RSA':
+				$secretent['certref'] = $_POST['certref'];
+				unset($secretent['pre-shared-key']);
+				break;
+			default:
+				$secretent['pre-shared-key'] = $_POST['psk'];
+				unset($secretent['certref']);
+				break;
+		}
+		
+		$secretent['ident-type'] = $_POST['ident_type'];
+		$secretent['pool-address'] = $_POST['pool_address'];
+		$secretent['pool-netbits'] = $_POST['pool_netbits'];
+		$secretent['dns-address'] = $_POST['dns_address'];
+
+		unset($secretent['ident_type']);
+		unset($secretent['pool_address']);
+		unset($secretent['pool_netbits']);
+		unset($secretent['dns_address']);
+
 		$text = "";
 
 		if (isset($id) && $a_secret[$id]) {
@@ -130,14 +172,62 @@ if ($_POST['save']) {
 	}
 }
 
-function build_ipsecid_list() {
+function build_ipsec_identifier_list() {
 	global $ipsec_identifier_list;
 
 	$list = array();
 
-	foreach ($ipsec_identifier_list as $id_type => $id_params) {
-		$list[$id_type] = htmlspecialchars($id_params['desc']);
+	foreach ($ipsec_identifier_list as $identifier_type => $identifier_params) {
+		$list[$identifier_type] = htmlspecialchars($identifier_params['desc']);
 	}
+
+	return($list);
+}
+
+function build_ipsec_phase1_list() {
+	global $a_phase1;
+
+	$list = array();
+
+	function phase1_descr_cmp($a, $b) {
+		return strcmp($a, $b);
+	}
+
+	foreach ($a_phase1 as $ph1ent) {
+		// if (!isset($ph1ent['mobile']) || isset($ph1ent['disabled'])) {
+		if (!isset($ph1ent['mobile'])) {
+			continue;
+		}
+		$list[$ph1ent['ikeid']] = htmlspecialchars($ph1ent['descr']);
+		
+		if (isset($ph1ent['disabled'])) {
+			$list[$ph1ent['ikeid']] .= " (disabled)";
+		}
+	}
+
+	uasort($list, "phase1_descr_cmp");
+
+	return($list);
+}
+
+function build_cert_list() {
+	global $config;
+
+	$list = array();
+
+	function cert_descr_cmp($a, $b) {
+		return strcmp($a, $b);
+	}
+
+	if (is_array($config['cert'])) {
+		foreach ($config['cert'] as $cert) {
+			if ($cert['type'] !== "user") {
+				continue;
+			}
+			$list[$cert['refid']] = $cert['descr'];
+		}
+	}
+	uasort($list, "cert_descr_cmp");
 
 	return($list);
 }
@@ -160,7 +250,14 @@ $section->addInput(new Form_Input(
 	'*Identifier',
 	'text',
 	$pconfig['ident']
-))->setHelp('This can be either an IP address, fully qualified domain name or an e-mail address.');
+))->setHelp('This can be either an IP address, fully qualified domain name or an e-mail address.<br />Hint: If Secret type is RSA, this Identifier has to be the Common Name of the selected User certificate.');
+
+$section->addInput(new Form_Select(
+	'phase1_ikeid',
+	'*Linked Phase 1',
+	$pconfig['phase1_ikeid'],
+	build_ipsec_phase1_list()
+))->setWidth(4)->setHelp('Required: Link User to Phase 1 of IPsec Tunnel. Sorted by Phase 1 description.');
 
 $section->addInput(new Form_Select(
 	'type',
@@ -177,10 +274,17 @@ $section->addInput(new Form_Input(
 ));
 
 $section->addInput(new Form_Select(
+	'certref',
+	'*User certificate',
+	$pconfig['certref'],
+	build_cert_list()
+))->setWidth(4)->setHelp('Required: User certificate for authentication.');
+
+$section->addInput(new Form_Select(
 	'ident_type',
 	'Identifier type',
 	$pconfig['ident_type'],
-	build_ipsecid_list()
+	build_ipsec_identifier_list()
 ))->setWidth(4)->setHelp('Optional: specify identifier type for strongswan');
 
 $section->addInput(new Form_IpAddress(
@@ -213,5 +317,47 @@ print $form;
 print_info_box(gettext("PSK for any user can be set by using an identifier of any."), 'info', false);
 ?>
 </div>
+<form action="vpn_ipsec_phase1.php" method="post" name="iform" id="iform">
+
+<script type="text/javascript">
+//<![CDATA[
+events.push(function() {
+	function type_change() {
+		value = $('#type').val();
+
+		switch (value) {
+			case 'RSA':
+				hideInput('psk', true);
+				hideInput('certref', false);
+				break;
+			default:
+				hideInput('psk', false);
+				hideInput('certref', true);
+				break;
+		}
+	}
+
+	$('#type').change(function () {
+		type_change();
+	});
+
+	var generateButton = $('<a class="btn btn-xs btn-warning"><i class="fa fa-refresh icon-embed-btn"></i><?=gettext("Generate new Pre-Shared Key");?></a>');
+	generateButton.on('click', function() {
+		$.ajax({
+			type: 'get',
+			url: 'vpn_ipsec_phase1.php?generatekey=true',
+			dataType: 'json',
+			success: function(data) {
+				$('#psk').val(data.pskey.replace(/\\n/g, '\n'));
+			}
+		});
+	});
+
+	type_change();
+	$('#psk').parent().append(generateButton);
+});
+//]]>
+</script>
+</form>
 <?php
 include("foot.inc");

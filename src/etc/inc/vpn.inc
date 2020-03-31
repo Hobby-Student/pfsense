@@ -777,7 +777,40 @@ EOD;
 			if (empty($key['type'])) {
 				$key['type'] = 'PSK';
 			}
-			$pskconf .= " {$key['ident']} : {$key['type']} 0s" . base64_encode($key['pre-shared-key']) . "\n";
+
+			switch ($key['type']) {
+				case 'RSA':
+					// $cert = lookup_cert($key['certref']);
+
+					// if (!$cert) {
+					// 	log_error(sprintf(gettext("Error: Invalid user certificate reference for %s"), $key['ident']));
+					// 	continue;
+					// }
+
+					// @chmod($certpath, 0600);
+
+					// $mobilekeyfile = "{$keypath}/cert-{$key['certref']}.key";
+					// if (!file_put_contents($mobilekeyfile, base64_decode($cert['prv']))) {
+					// 	log_error(sprintf(gettext("Error: Cannot write user key file for %s"), $key['ident']));
+					// 	continue;
+					// }
+					// @chmod($mobilekeyfile, 0600);
+
+					// $mobilecertfile = "{$certpath}/cert-{$key['certref']}.crt";
+					// if (!file_put_contents($mobilecertfile, base64_decode($cert['crt']))) {
+					// 	log_error(sprintf(gettext("Error: Cannot write user certificate file for %s"), $key['ident']));
+					// 	@unlink($mobilekeyfile);
+					// 	continue;
+					// }
+					// @chmod($mobilecertfile, 0600);
+
+					// $pskconf .= " : RSA {$mobilekeyfile}\n";
+					// // $pskconf .= "{$key['ident']} : RSA {$mobilekeyfile}\n";
+					break;
+				default:
+					$pskconf .= "{$key['ident']} : {$key['type']} 0s" . base64_encode($key['pre-shared-key']) . "\n";
+					break;
+			}
 		}
 		unset($key);
 	}
@@ -1454,7 +1487,7 @@ EOD;
 				}
 			} else {
 				if (isset($ph1ent['mobile'])) {
-					$ipsecfin = "\nconn con-mobile\n";
+					$ipsecfin = "\nconn con{$ph1ent['ikeid']}000-mobile\n";
 				}
 				else {
 					$ipsecfin = "\nconn con{$ph1ent['ikeid']}000\n";
@@ -1509,29 +1542,44 @@ EOD;
 				$ipsecfin = '';
 				$mobilekey_counter = 1;
 				foreach ($a_mobilekey as $mkent) {
-					if ($mkent['type'] != "EAP") {
+					if ($ph1ent['ikeid'] !== $mkent['phase1-ikeid']) {
+						continue;
+					}
+					if (!isset($mkent['ident-type']) || !isset($mkent['pool-address']) || !isset($mkent['pool-netbits'])) {
 						continue;
 					}
 
-					if (!isset($mkent['ident_type']) || !isset($mkent['pool_address']) || !isset($mkent['pool_netbits'])) {
+					if (strlen($mkent['pool-address']) < 1 || !is_ipaddr($mkent['pool-address'])) {
 						continue;
 					}
 
-					if (strlen($mkent['pool_address']) < 1 || !is_ipaddr($mkent['pool_address'])) {
-						continue;
-					}
-					$clientid = ($mkent['ident_type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident_type']}:{$mkent['ident']}";
+					$clientid = ($mkent['ident-type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident-type']}:{$mkent['ident']}";
 					$clienteapid = ($ph1ent['authentication_method'] == "eap-mschapv2") ? $clientid : '%identity';
-					$ipsecfin .= "\nconn mobile-{$mobilekey_counter}\n";
-					$ipsecfin .= "\talso = con-mobile\n";
-					$ipsecfin .= "\teap_identity = {$clienteapid}\n";
-					$ipsecfin .= "\trightsourceip = {$mkent['pool_address']}/{$mkent['pool_netbits']}\n";
 
-					if (isset($mkent['dns_address']) && strlen($mkent['dns_address']) > 0 && is_ipaddr($mkent['dns_address'])) {
-						$ipsecfin .= "\trightdns = {$mkent['dns_address']}\n";
+					$ipsecfin .= "\nconn mobile{$mkent['phase1-ikeid']}000-{$mobilekey_counter}\n";
+					$ipsecfin .= "\talso = con{$mkent['phase1-ikeid']}000-mobile\n";
+
+					switch ($mkent['type']) {
+						case 'EAP':
+							$ipsecfin .= "\teap_identity = {$clienteapid}\n";
+							$ipsecfin .= "\trightid = {$clientid}\n";
+							break;
+						case 'RSA':
+							$ipsecfin .= "\trightid = \"CN={$mkent['ident']}\"\n";
+							break;
+						default:
+							break;
 					}
 
-					$ipsecfin .= "\trightid = {$clientid}\n";
+					// if ($mkent['type'] != "EAP") {
+					// 	continue;
+					// }
+					
+					$ipsecfin .= "\trightsourceip = {$mkent['pool-address']}/{$mkent['pool-netbits']}\n";
+
+					if (isset($mkent['dns-address']) && strlen($mkent['dns-address']) > 0 && is_ipaddr($mkent['dns-address'])) {
+						$ipsecfin .= "\trightdns = {$mkent['dns-address']}\n";
+					}
 
 					// optional: define left|rightid more granular
 					// supported: ipv4, ipv6, rfc822, email, userfqdn, fqdn, dns, asn1dn, asn1gn, keyid

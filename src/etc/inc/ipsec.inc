@@ -195,7 +195,8 @@ $p1_authentication_methods = array(
 global $ipsec_preshared_key_type;
 $ipsec_preshared_key_type = array(
 	'PSK' => 'PSK',
-	'EAP' => 'EAP'
+	'EAP' => 'EAP',
+	'RSA' => 'RSA'
 );
 
 global $ipsec_closeactions;
