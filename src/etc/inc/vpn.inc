@@ -1556,7 +1556,7 @@ EOD;
 					$clientid = ($mkent['ident-type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident-type']}:{$mkent['ident']}";
 					$clienteapid = ($ph1ent['authentication_method'] == "eap-mschapv2") ? $clientid : '%identity';
 
-					$ipsecfin .= "\nconn mobile{$mkent['phase1-ikeid']}000-{$mobilekey_counter}\n";
+					$ipsecfin .= "\nconn mobile{$mkent['phase1-ikeid']}000-mobile-{$mobilekey_counter}\n";
 					$ipsecfin .= "\talso = con{$mkent['phase1-ikeid']}000-mobile\n";
 
 					switch ($mkent['type']) {
