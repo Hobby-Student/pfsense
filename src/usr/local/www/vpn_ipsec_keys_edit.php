@@ -50,7 +50,7 @@ if (is_numericint($_REQUEST['id'])) {
 }
 
 if (isset($id) && $a_secret[$id]) {
-	$pconfig['phase1_ikeid'] = $a_secret[$id]['phase1-ikeid'];
+	$pconfig['phase1_ikeid'] = $a_secret[$id]['ikeid'];
 	$pconfig['ident'] = $a_secret[$id]['ident'];
 	$pconfig['type'] = $a_secret[$id]['type'];
 	$pconfig['psk'] = $a_secret[$id]['pre-shared-key'];
@@ -116,7 +116,7 @@ if ($_POST['save']) {
 	if (!$input_errors && !(isset($id) && $a_secret[$id])) {
 		/* make sure there are no dupes */
 		foreach ($a_secret as $secretent) {
-			if ($secretent['ident'] == $_POST['ident'] && $secretent['phase1-ikeid'] == $_POST['phase1_ikeid']) {
+			if ($secretent['ident'] == $_POST['ident'] && $secretent['ikeid'] == $_POST['phase1_ikeid']) {
 				$input_errors[] = gettext("Another entry with the same identifier already exists.");
 				break;
 			}
@@ -129,7 +129,7 @@ if ($_POST['save']) {
 			$secretent = $a_secret[$id];
 		}
 
-		$secretent['phase1-ikeid'] = $_POST['phase1_ikeid'];
+		$secretent['ikeid'] = $_POST['phase1_ikeid'];
 		$secretent['ident'] = $_POST['ident'];
 		$secretent['type'] = $_POST['type'];
 

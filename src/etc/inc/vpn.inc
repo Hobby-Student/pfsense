@@ -1542,7 +1542,7 @@ EOD;
 				$ipsecfin = '';
 				$mobilekey_counter = 1;
 				foreach ($a_mobilekey as $mkent) {
-					if ($ph1ent['ikeid'] !== $mkent['phase1-ikeid']) {
+					if ($ph1ent['ikeid'] !== $mkent['ikeid']) {
 						continue;
 					}
 					if (!isset($mkent['ident-type']) || !isset($mkent['pool-address']) || !isset($mkent['pool-netbits'])) {
@@ -1556,8 +1556,8 @@ EOD;
 					$clientid = ($mkent['ident-type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident-type']}:{$mkent['ident']}";
 					$clienteapid = ($ph1ent['authentication_method'] == "eap-mschapv2") ? $clientid : '%identity';
 
-					$ipsecfin .= "\nconn mobile{$mkent['phase1-ikeid']}000-mobile-{$mobilekey_counter}\n";
-					$ipsecfin .= "\talso = con{$mkent['phase1-ikeid']}000-mobile\n";
+					$ipsecfin .= "\nconn mobile{$mkent['ikeid']}000-mobile-{$mobilekey_counter}\n";
+					$ipsecfin .= "\talso = con{$mkent['ikeid']}000-mobile\n";
 
 					switch ($mkent['type']) {
 						case 'EAP':
