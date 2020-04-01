@@ -73,10 +73,10 @@ $ipsec_log_cats = array(
 
 global $ipsec_identifier_list;
 $ipsec_identifier_list = array(
+	'none' => array('desc' => '', 'mobile' => true),
 	// 'ipv4' => array('desc' => gettext('IPv4 address'), 'mobile' => true),
 	// 'ipv6' => array('desc' => gettext('IPv6 address'), 'mobile' => true),
-	// 'rfc822' => array('desc' => gettext('RFC822'), 'mobile' => true),
-	'none' => array('desc' => '', 'mobile' => true),
+	'rfc822' => array('desc' => gettext('RFC822'), 'mobile' => true),
 	'email' => array('desc' => gettext('E-mail address'), 'mobile' => true),
 	'userfqdn' => array('desc' => gettext('User Fully Qualified Domain Name'), 'mobile' => true)
 	// 'fqdn' => array('desc' => gettext('Fully Qualified Domain Name'), 'mobile' => true),

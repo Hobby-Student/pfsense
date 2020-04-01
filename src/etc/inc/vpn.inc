@@ -1545,18 +1545,29 @@ EOD;
 					if ($ph1ent['ikeid'] !== $mkent['ikeid']) {
 						continue;
 					}
-					if (!isset($mkent['ident-type']) || !isset($mkent['pool-address']) || !isset($mkent['pool-netbits'])) {
+					if (!isset($mkent['ident_type']) || !isset($mkent['pool_address']) || !isset($mkent['pool_netbits'])) {
 						continue;
 					}
 
-					if (strlen($mkent['pool-address']) < 1 || !is_ipaddr($mkent['pool-address'])) {
+					if (strlen($mkent['pool_address']) < 1 || !is_ipaddr($mkent['pool_address'])) {
 						continue;
 					}
 
-					$clientid = ($mkent['ident-type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident-type']}:{$mkent['ident']}";
+					switch ($mkent['ident_type']) {
+						case 'email':
+						case 'rfc822':
+						case 'userfqdn':
+							$clientid = "{$mkent['ident_type']}:{$mkent['ident']}";
+							break;
+						default:
+							$clientid = "\"{$mkent['ident']}\"";
+							break;
+					}
+
+					// $clientid = ($mkent['ident_type'] == "none") ? "\"{$mkent['ident']}\"" : "{$mkent['ident_type']}:{$mkent['ident']}";
 					$clienteapid = ($ph1ent['authentication_method'] == "eap-mschapv2") ? $clientid : '%identity';
 
-					$ipsecfin .= "\nconn mobile{$mkent['ikeid']}000-mobile-{$mobilekey_counter}\n";
+					$ipsecfin .= "\nconn con{$mkent['ikeid']}000-mobile-{$mobilekey_counter}\n";
 					$ipsecfin .= "\talso = con{$mkent['ikeid']}000-mobile\n";
 
 					switch ($mkent['type']) {
@@ -1571,10 +1582,10 @@ EOD;
 							break;
 					}
 					
-					$ipsecfin .= "\trightsourceip = {$mkent['pool-address']}/{$mkent['pool-netbits']}\n";
+					$ipsecfin .= "\trightsourceip = {$mkent['pool_address']}/{$mkent['pool_netbits']}\n";
 
-					if (isset($mkent['dns-address']) && strlen($mkent['dns-address']) > 0 && is_ipaddr($mkent['dns-address'])) {
-						$ipsecfin .= "\trightdns = {$mkent['dns-address']}\n";
+					if (isset($mkent['dns_address']) && strlen($mkent['dns_address']) > 0 && is_ipaddr($mkent['dns_address'])) {
+						$ipsecfin .= "\trightdns = {$mkent['dns_address']}\n";
 					}
 
 					// optional: define left|rightid more granular

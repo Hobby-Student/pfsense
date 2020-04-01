@@ -42,8 +42,8 @@ $a_secret = &$config['ipsec']['mobilekey'];
 init_config_arr(array('ipsec', 'phase1'));
 $a_phase1 = &$config['ipsec']['phase1'];
 
-init_config_arr(array('cert'));
-$a_cert = &$config['cert'];
+// init_config_arr(array('cert'));
+// $a_cert = &$config['cert'];
 
 if (is_numericint($_REQUEST['id'])) {
 	$id = $_REQUEST['id'];
@@ -54,11 +54,11 @@ if (isset($id) && $a_secret[$id]) {
 	$pconfig['ident'] = $a_secret[$id]['ident'];
 	$pconfig['type'] = $a_secret[$id]['type'];
 	$pconfig['psk'] = $a_secret[$id]['pre-shared-key'];
-	$pconfig['certref'] = $a_secret[$id]['certref'];
-	$pconfig['ident_type'] = $a_secret[$id]['ident-type'] ?? $a_secret[$id]['ident_type'];
-	$pconfig['pool_address'] = $a_secret[$id]['pool-address'] ?? $a_secret[$id]['pool_address'];
-	$pconfig['pool_netbits'] = $a_secret[$id]['pool-netbits'] ?? $a_secret[$id]['pool_netbits'];
-	$pconfig['dns_address'] = $a_secret[$id]['dns-address'] ?? $a_secret[$id]['dns_address'];
+	// $pconfig['certref'] = $a_secret[$id]['certref'];
+	$pconfig['ident_type'] = $a_secret[$id]['ident_type'];
+	$pconfig['pool_address'] = $a_secret[$id]['pool_address'];
+	$pconfig['pool_netbits'] = $a_secret[$id]['pool_netbits'];
+	$pconfig['dns_address'] = $a_secret[$id]['dns_address'];
 }
 
 if ($_POST['save']) {
@@ -79,8 +79,8 @@ if ($_POST['save']) {
 
 	switch ($_POST['type']) {
 		case 'RSA':
-			$reqdfields[] = "certref";
-			$reqdfieldsn[] = gettext("User certificate");
+			// $reqdfields[] = "certref";
+			// $reqdfieldsn[] = gettext("User certificate");
 			break;
 		default:
 			$reqdfields[] = "psk";
@@ -92,7 +92,12 @@ if ($_POST['save']) {
 
 	do_input_validation($_POST, $reqdfields, $reqdfieldsn, $input_errors);
 
-	if (preg_match("/[^a-zA-Z0-9@\.\-]/", $_POST['ident'])) {
+	if ($_POST['type'] == "RSA") {
+		if (preg_match("/[^a-zA-Z0-9@\.\- ]/", $_POST['ident'])) {
+			$input_errors[] = gettext("The identifier contains invalid characters.");
+		}
+	}
+	else if (preg_match("/[^a-zA-Z0-9@\.\-]/", $_POST['ident'])) {
 		$input_errors[] = gettext("The identifier contains invalid characters.");
 	}
 
@@ -135,24 +140,19 @@ if ($_POST['save']) {
 
 		switch ($secretent['type']) {
 			case 'RSA':
-				$secretent['certref'] = $_POST['certref'];
+				// $secretent['certref'] = $_POST['certref'];
 				unset($secretent['pre-shared-key']);
 				break;
 			default:
 				$secretent['pre-shared-key'] = $_POST['psk'];
-				unset($secretent['certref']);
+				// unset($secretent['certref']);
 				break;
 		}
 		
-		$secretent['ident-type'] = $_POST['ident_type'];
-		$secretent['pool-address'] = $_POST['pool_address'];
-		$secretent['pool-netbits'] = $_POST['pool_netbits'];
-		$secretent['dns-address'] = $_POST['dns_address'];
-
-		unset($secretent['ident_type']);
-		unset($secretent['pool_address']);
-		unset($secretent['pool_netbits']);
-		unset($secretent['dns_address']);
+		$secretent['ident_type'] = $_POST['ident_type'];
+		$secretent['pool_address'] = $_POST['pool_address'];
+		$secretent['pool_netbits'] = $_POST['pool_netbits'];
+		$secretent['dns_address'] = $_POST['dns_address'];
 
 		$text = "";
 
@@ -210,27 +210,27 @@ function build_ipsec_phase1_list() {
 	return($list);
 }
 
-function build_cert_list() {
-	global $config;
+// function build_cert_list() {
+// 	global $config;
 
-	$list = array();
+// 	$list = array();
 
-	function cert_descr_cmp($a, $b) {
-		return strcmp($a, $b);
-	}
+// 	function cert_descr_cmp($a, $b) {
+// 		return strcmp($a, $b);
+// 	}
 
-	if (is_array($config['cert'])) {
-		foreach ($config['cert'] as $cert) {
-			if ($cert['type'] !== "user") {
-				continue;
-			}
-			$list[$cert['refid']] = $cert['descr'];
-		}
-	}
-	uasort($list, "cert_descr_cmp");
+// 	if (is_array($config['cert'])) {
+// 		foreach ($config['cert'] as $cert) {
+// 			if ($cert['type'] !== "user") {
+// 				continue;
+// 			}
+// 			$list[$cert['refid']] = $cert['descr'];
+// 		}
+// 	}
+// 	uasort($list, "cert_descr_cmp");
 
-	return($list);
-}
+// 	return($list);
+// }
 
 $pgtitle = array(gettext("VPN"), gettext("IPsec"), gettext("Pre-Shared Keys"), gettext("Edit"));
 $pglinks = array("", "vpn_ipsec.php", "vpn_ipsec_keys.php", "@self");
@@ -273,12 +273,12 @@ $section->addInput(new Form_Input(
 	$pconfig['psk']
 ));
 
-$section->addInput(new Form_Select(
-	'certref',
-	'*User certificate',
-	$pconfig['certref'],
-	build_cert_list()
-))->setWidth(4)->setHelp('Required: User certificate for authentication.');
+// $section->addInput(new Form_Select(
+// 	'certref',
+// 	'*User certificate',
+// 	$pconfig['certref'],
+// 	build_cert_list()
+// ))->setWidth(4)->setHelp('Required: User certificate for authentication.');
 
 $section->addInput(new Form_Select(
 	'ident_type',
@@ -328,11 +328,11 @@ events.push(function() {
 		switch (value) {
 			case 'RSA':
 				hideInput('psk', true);
-				hideInput('certref', false);
+				// hideInput('certref', false);
 				break;
 			default:
 				hideInput('psk', false);
-				hideInput('certref', true);
+				// hideInput('certref', true);
 				break;
 		}
 	}
