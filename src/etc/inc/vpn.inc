@@ -1565,15 +1565,11 @@ EOD;
 							$ipsecfin .= "\trightid = {$clientid}\n";
 							break;
 						case 'RSA':
-							$ipsecfin .= "\trightid = \"CN={$mkent['ident']}\"\n";
+							$ipsecfin .= "\trightid = \"/CN={$mkent['ident']}/\"\n";
 							break;
 						default:
 							break;
 					}
-
-					// if ($mkent['type'] != "EAP") {
-					// 	continue;
-					// }
 					
 					$ipsecfin .= "\trightsourceip = {$mkent['pool-address']}/{$mkent['pool-netbits']}\n";
 
